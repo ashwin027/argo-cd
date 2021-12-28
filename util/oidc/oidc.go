@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	gooidc "github.com/coreos/go-oidc"
+	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	"github.com/dgrijalva/jwt-go/v4"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
@@ -64,6 +64,8 @@ type ClientApp struct {
 	redirectURI string
 	// URL of the issuer (e.g. https://argocd.example.com/api/dex)
 	issuerURL string
+	// Issuer alias to support offspec providers like Azure, Oracle IDCS have oidc discovery url different from issuer url which causes issuerValidation to fail
+	issuerAlias string
 	// The URL endpoint at which the ArgoCD server is accessed.
 	baseHRef string
 	// client is the HTTP client which is used to query the IDp
@@ -99,6 +101,7 @@ func NewClientApp(settings *settings.ArgoCDSettings, cache OIDCStateStorage, dex
 		clientSecret: settings.OAuth2ClientSecret(),
 		redirectURI:  redirectURL,
 		issuerURL:    settings.IssuerURL(),
+		issuerAlias:  settings.IssuerAlias(),
 		baseHRef:     baseHRef,
 		cache:        cache,
 	}
@@ -127,7 +130,7 @@ func NewClientApp(settings *settings.ArgoCDSettings, cache OIDCStateStorage, dex
 		a.client.Transport = httputil.DebugTransport{T: a.client.Transport}
 	}
 
-	a.provider = NewOIDCProvider(a.issuerURL, a.client)
+	a.provider = NewOIDCProvider(a.issuerURL, a.issuerAlias, a.client)
 	// NOTE: if we ever have replicas of Argo CD, this needs to switch to Redis cache
 	a.secureCookie = bool(u.Scheme == "https")
 	a.settings = settings

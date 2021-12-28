@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	gooidc "github.com/coreos/go-oidc"
+	gooidc "github.com/coreos/go-oidc/v3/oidc"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/oauth2"
 )
@@ -28,6 +28,7 @@ type Provider interface {
 
 type providerImpl struct {
 	issuerURL      string
+	issuerAlias    string
 	client         *http.Client
 	goOIDCProvider *gooidc.Provider
 }
@@ -35,10 +36,11 @@ type providerImpl struct {
 var _ Provider = &providerImpl{}
 
 // NewOIDCProvider initializes an OIDC provider
-func NewOIDCProvider(issuerURL string, client *http.Client) Provider {
+func NewOIDCProvider(issuerURL string, issuerAlias string, client *http.Client) Provider {
 	return &providerImpl{
-		issuerURL: issuerURL,
-		client:    client,
+		issuerURL:   issuerURL,
+		issuerAlias: issuerAlias,
+		client:      client,
 	}
 }
 
@@ -60,6 +62,11 @@ func (p *providerImpl) provider() (*gooidc.Provider, error) {
 func (p *providerImpl) newGoOIDCProvider() (*gooidc.Provider, error) {
 	log.Infof("Initializing OIDC provider (issuer: %s)", p.issuerURL)
 	ctx := gooidc.ClientContext(context.Background(), p.client)
+	// Some offspec providers like Azure, Oracle IDCS have oidc discovery url different from issuer url which causes issuerValidation to fail
+	// This providerCtx will allow the Verifier to succeed if the alternate/alias URL is in the config
+	if p.issuerAlias != "" {
+		ctx = gooidc.InsecureIssuerURLContext(ctx, p.issuerAlias)
+	}
 	prov, err := gooidc.NewProvider(ctx, p.issuerURL)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to query provider %q: %v", p.issuerURL, err)

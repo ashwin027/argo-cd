@@ -115,6 +115,7 @@ type Help struct {
 type OIDCConfig struct {
 	Name                   string                 `json:"name,omitempty"`
 	Issuer                 string                 `json:"issuer,omitempty"`
+	IssuerAlias            string                 `json:"issuerAlias,omitempty"`
 	ClientID               string                 `json:"clientID,omitempty"`
 	ClientSecret           string                 `json:"clientSecret,omitempty"`
 	CLIClientID            string                 `json:"cliClientID,omitempty"`
@@ -1507,6 +1508,13 @@ func (a *ArgoCDSettings) IssuerURL() string {
 	}
 	if a.DexConfig != "" {
 		return a.URL + common.DexAPIEndpoint
+	}
+	return ""
+}
+
+func (a *ArgoCDSettings) IssuerAlias() string {
+	if oidcConfig := a.OIDCConfig(); oidcConfig != nil {
+		return oidcConfig.IssuerAlias
 	}
 	return ""
 }
